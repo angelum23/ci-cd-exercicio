@@ -9,5 +9,5 @@ def test_soma():
 
 def test_multiplica():
     assert multiplica(3, 3) == 9
-    assert multiplica(10, 10) == 10
+    assert multiplica(10, 10) == 100
     assert multiplica(100, 0) == 0
