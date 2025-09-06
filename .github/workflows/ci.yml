@@ -10,35 +10,61 @@ on:
 
 permissions:
   contents: write
-  
+  # Permissões para publicar a imagem no Docker Hub
+  actions: write
+  packages: write
+
 jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
     steps:
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Step 2: Set up Python (para rodar os testes de unidade)
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
+      # Step 3: Install dependencies (incluindo pytest para rodar testes)
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pytest flake8
 
+      # Step 4: Run linter
       - name: Run linter
         run: flake8 app.py
 
+      # Step 5: Run tests (antes de construir a imagem)
       - name: Run tests
         run: pytest test_app.py
 
+      # Step 6: Build Docker image (build a Docker image with the Flask app)
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/flask-api:$GITHUB_SHA .
+
+      # Step 7: Run tests inside Docker container
+      - name: Run tests inside Docker container
+        run: |
+          docker run --rm ${{ secrets.DOCKER_USERNAME }}/flask-api:$GITHUB_SHA pytest test_app.py
+
+      # Step 8: Push Docker image to Docker Hub (after successful tests)
+      - name: Push Docker image to Docker Hub
+        if: success()  # Only push if tests passed
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/flask-api:$GITHUB_SHA
+
+      # Step 9: Build artifact (se ainda for necessário)
       - name: Build artifact
         run: |
           chmod +x build.sh
           ./build.sh
 
+      # Step 10: Create GitHub Release with asset
       - name: Create GitHub Release with asset
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
